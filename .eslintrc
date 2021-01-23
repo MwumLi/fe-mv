@@ -4,6 +4,7 @@
     "oclif-typescript"
   ],
   "rules": {
-    "no-console": "off"
+    "no-console": "off",
+    "valid-jsdoc":"off"
   }
 }
