@@ -1,12 +1,12 @@
 {
-  "name": "move",
+  "name": "s-mv",
   "description": "移动(重命名)目录或文件, 同时更新引用",
   "version": "0.0.0",
   "author": "MwumLi",
   "bin": {
-    "move": "./bin/run"
+    "s-mv": "./bin/run"
   },
-  "bugs": "https://github.com/MwumLi/move/issues",
+  "bugs": "https://github.com/MwumLi/s-mv/issues",
   "dependencies": {
     "@oclif/command": "^1",
     "@oclif/config": "^1",
@@ -37,16 +37,16 @@
     "/bin",
     "/lib"
   ],
-  "homepage": "https://github.com/MwumLi/move",
+  "homepage": "https://github.com/MwumLi/s-mv",
   "keywords": [
     "oclif"
   ],
   "license": "MIT",
   "main": "lib/index.js",
   "oclif": {
-    "bin": "move"
+    "bin": "s-mv"
   },
-  "repository": "MwumLi/move",
+  "repository": "MwumLi/s-mv",
   "scripts": {
     "posttest": "eslint . --ext .ts --config .eslintrc",
     "prepack": "rm -rf lib && tsc -b && oclif-dev readme",
