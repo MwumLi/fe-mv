@@ -5,6 +5,8 @@
   ],
   "rules": {
     "no-console": "off",
-    "valid-jsdoc":"off"
+    "valid-jsdoc":"off",
+    "object-curly-spacing": ["error", "always", { "objectsInObjects": false }],
+    "comma-dangle":"off"
   }
 }

@@ -1,4 +1,7 @@
 import {Command, flags} from '@oclif/command'
+import { string } from '@oclif/command/lib/flags'
+import {resolve} from 'path'
+import {move} from './move'
 
 class Move extends Command {
   static description = 'describe the command here'
@@ -7,22 +10,34 @@ class Move extends Command {
     // add --version flag to show CLI version
     version: flags.version({char: 'v'}),
     help: flags.help({char: 'h'}),
-    // flag with a value (-n, --name=VALUE)
-    name: flags.string({char: 'n', description: 'name to print'}),
-    // flag with no value (-f, --force)
-    force: flags.boolean({char: 'f'}),
+    // flag with no value (-r, --rootPath)
+    rootPath: flags.string({
+      char: 'r',
+      description: '项目跟路径',
+      parse: v => resolve(v),
+    }),
   }
 
-  static args = [{name: 'file'}]
+  static args = [
+    {
+      name: 'source',
+      required: true,
+      description: '移动(重命名)的文件(目录)',
+      parse: (v: string) => resolve(v),
+    },
+    {
+      name: 'target',
+      required: true,
+      description: '目标位置',
+      parse: (v: string) => resolve(v),
+    },
+  ]
 
   async run() {
     const {args, flags} = this.parse(Move)
-
-    const name = flags.name ?? 'world'
-    this.log(`hello ${name} from ./src/index.ts`)
-    if (args.file && flags.force) {
-      this.log(`you input --force and --file: ${args.file}`)
-    }
+    const {source, target} = args
+    const {rootPath = process.cwd()} = flags
+    move(source, target, rootPath as string)
   }
 }
 
