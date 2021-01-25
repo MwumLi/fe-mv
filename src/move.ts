@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
-import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, HandleFileSyncHandler } from './utils'
+import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, HandleFileSyncHandler, isModuleSrcPath, isNpmModule } from './utils'
 import { Project } from './project'
 
 let project: Project
@@ -9,6 +9,9 @@ function generateReferencePath(originModuleAbsPath: string, filepath: string) {
   const moveModuleAbsPath = project.getMovePath(originModuleAbsPath)
   const relativeSrc = project.relativeSrc(moveModuleAbsPath)
   const relativeTarget = relative(dirname(filepath), moveModuleAbsPath)
+  if (filepath.endsWith('src/commons/js/vuex-connect/connect.js')) {
+    console.log('ss', filepath, originModuleAbsPath, moveModuleAbsPath, relativeTarget)
+  }
   const len = (v: string) => v.split('/').length
   if (len(relativeSrc) < len(relativeTarget)) {
     return moduleSrcPath(relativeSrc)
@@ -48,11 +51,6 @@ function updateNorMoverReference(filepath: string) {
   handleFileSync(filepath, handler)
 }
 
-// function generateImportPath(filepath: any, rootPath: any, basePath: any) {
-//   const relativeRootPath = path.relative(filepath, rootPath)
-//   const relativeBasePath = path.relative(filepath, basePath)
-// }
-
 const filterFunc = (filter: string | RegExp, name: string) => {
   if (filter instanceof RegExp) return filter.test(name)
   return filter === name
@@ -88,16 +86,50 @@ function traversal(dir: string, callback: (arg0: any) => void) {
   })
 }
 
+function updateMoverReference(filepath: string) {
+  const handler: HandleFileSyncHandler = ({ content }): string => {
+    const importReg = /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
+    let matchResult
+    const updated = []
+    while ((matchResult = importReg.exec(content))) {
+      const { statement, modulePath } = matchResult.groups as {
+        [key: string]: string;
+      }
+      if (isNpmModule(modulePath)) continue
+      const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
+      const curMoverMovePath = project.getMovePath(filepath)
+      if (project.isMover(originModuleAbsPath) || isModuleSrcPath(modulePath)) {
+        const newModulePath = generateReferencePath(originModuleAbsPath, curMoverMovePath)
+        if (modulePath !== newModulePath) {
+          const update = {
+            statement,
+            newStatement: statement.replace(modulePath, newModulePath),
+          }
+          updated.push(update)
+        }
+      }
+    }
+
+    if (!updated || updated.length === 0) return content
+    const newContent = updated.reduce((content, { statement, newStatement }) => {
+      return content.replace(statement, newStatement)
+    }, content)
+    return newContent
+  }
+  handleFileSync(filepath, handler)
+}
+
 export function move(source: string, target: string, rootPath: string): void {
   project = new Project(rootPath, source, target)
   traversal(rootPath, filepath => {
     const isMover = project.isMover(filepath)
     if (isMover) {
-      console.log('TODO - ', filepath)
-      // process.exit(0)
+      updateMoverReference(filepath)
     } else {
       // 非移动者: 仅更新对移动者的引用
       updateNorMoverReference(filepath)
     }
   })
+
+  // TODO: mv source target
 }

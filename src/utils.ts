@@ -4,13 +4,26 @@ export function isDirectory(filepath: string) {
   return statSync(filepath).isDirectory()
 }
 
+const MODULE_SRC_PREFIX = '@/'
+export function isModuleSrcPath(filepath: string) {
+  return filepath.startsWith(MODULE_SRC_PREFIX)
+}
+
 export function moduleSrcPath(filepath: string) {
-  return `@/${filepath}`
+  return `${MODULE_SRC_PREFIX}${filepath}`
+}
+
+function isModuleRelativePath(filepath: string) {
+  return ['./', '../'].some(prefix => filepath.startsWith(prefix))
 }
 
 export function moduleRelativePath(filepath: string) {
-  if (['./', '../'].some(prefix => filepath.startsWith(prefix))) return filepath
+  if (isModuleRelativePath(filepath)) return filepath
   return `./${filepath}`
+}
+
+export function isNpmModule(modulePath: string) {
+  return !(isModuleRelativePath(modulePath) || isModuleSrcPath(modulePath))
 }
 
 export type HandleFileSyncHandler = (options: { filepath: string; content: string }) => string
