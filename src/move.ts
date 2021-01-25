@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
+import * as mv from 'mv'
 import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, HandleFileSyncHandler, isModuleSrcPath, isNpmModule } from './utils'
 import { Project } from './project'
 
@@ -121,6 +122,7 @@ function updateMoverReference(filepath: string) {
 
 export function move(source: string, target: string, rootPath: string): void {
   project = new Project(rootPath, source, target)
+  // 更新引用
   traversal(rootPath, filepath => {
     const isMover = project.isMover(filepath)
     if (isMover) {
@@ -131,5 +133,10 @@ export function move(source: string, target: string, rootPath: string): void {
     }
   })
 
-  // TODO: mv source target
+  // 移动(重命名)文件(目录)
+  mv(source, target, (err: any) => {
+    if (err) {
+      throw err
+    }
+  })
 }
