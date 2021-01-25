@@ -10,9 +10,6 @@ function generateReferencePath(originModuleAbsPath: string, filepath: string) {
   const moveModuleAbsPath = project.getMovePath(originModuleAbsPath)
   const relativeSrc = project.relativeSrc(moveModuleAbsPath)
   const relativeTarget = relative(dirname(filepath), moveModuleAbsPath)
-  if (filepath.endsWith('src/commons/js/vuex-connect/connect.js')) {
-    console.log('ss', filepath, originModuleAbsPath, moveModuleAbsPath, relativeTarget)
-  }
   const len = (v: string) => v.split('/').length
   if (len(relativeSrc) < len(relativeTarget)) {
     return moduleSrcPath(relativeSrc)
