@@ -1,15 +1,14 @@
-import {Command, flags} from '@oclif/command'
-import { string } from '@oclif/command/lib/flags'
-import {resolve} from 'path'
-import {move} from './move'
+import { Command, flags } from '@oclif/command'
+import { resolve } from 'path'
+import { move } from './move'
 
 class Move extends Command {
   static description = 'describe the command here'
 
   static flags = {
     // add --version flag to show CLI version
-    version: flags.version({char: 'v'}),
-    help: flags.help({char: 'h'}),
+    version: flags.version({ char: 'v' }),
+    help: flags.help({ char: 'h' }),
     // flag with no value (-r, --rootPath)
     rootPath: flags.string({
       char: 'r',
@@ -34,9 +33,9 @@ class Move extends Command {
   ]
 
   async run() {
-    const {args, flags} = this.parse(Move)
-    const {source, target} = args
-    const {rootPath = process.cwd()} = flags
+    const { args, flags } = this.parse(Move)
+    const { source, target } = args
+    const { rootPath = process.cwd() } = flags
     move(source, target, rootPath as string)
   }
 }

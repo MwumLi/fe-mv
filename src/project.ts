@@ -1,4 +1,4 @@
-import {join, resolve, dirname, relative} from 'path'
+import { join, resolve, dirname, relative } from 'path'
 import { isDirectory } from './utils'
 type KEYS = 'sourceRoot' | 'targetRoot'
 export class Project {
