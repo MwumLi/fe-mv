@@ -117,10 +117,17 @@ function updateMoverReference(filepath: string) {
   handleFileSync(filepath, handler)
 }
 
-export function move(source: string, target: string, rootPath: string): void {
-  project = new Project(rootPath, source, target)
+export interface MoveOptions {
+  root: string;
+  sourceRoot?: string;
+  sourceRootAlias?: string;
+}
+
+export function move(source: string, target: string, options: MoveOptions): void {
+  const { root } = options
+  project = new Project(root, source, target)
   // 更新引用
-  traversal(rootPath, filepath => {
+  traversal(root, filepath => {
     const isMover = project.isMover(filepath)
     if (isMover) {
       updateMoverReference(filepath)

@@ -1,5 +1,6 @@
 import { Command, flags } from '@oclif/command'
 import { resolve } from 'path'
+import { detectFile } from './utils/fs'
 import { move } from './move'
 
 class Move extends Command {
@@ -10,9 +11,9 @@ class Move extends Command {
     version: flags.version({ char: 'v' }),
     help: flags.help({ char: 'h' }),
     // flag with no value (-r, --rootPath)
-    rootPath: flags.string({
+    root: flags.string({
       char: 'r',
-      description: '项目跟路径',
+      description: '项目根路径(默认自动探测 .git -> package.json -> cwd)',
       parse: v => resolve(v),
     }),
   }
@@ -35,8 +36,18 @@ class Move extends Command {
   async run() {
     const { args, flags } = this.parse(Move)
     const { source, target } = args
-    const { rootPath = process.cwd() } = flags
-    move(source, target, rootPath as string)
+    move(source, target, {
+      root: this.getRootPath(flags.root)
+    })
+  }
+
+  getRootPath(root?: string | null) {
+    if (root) return root
+    root = detectFile('.git')
+    if (root) return root
+    root = detectFile('package.json')
+    if (root) return root
+    return process.cwd()
   }
 }
 

@@ -1,5 +1,5 @@
 import { join, resolve, dirname, relative } from 'path'
-import { isDirectory } from './utils'
+import { isDirectory } from './utils/fs'
 type KEYS = 'sourceRoot' | 'targetRoot'
 export class Project {
   root: string;
