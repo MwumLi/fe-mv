@@ -17,11 +17,11 @@ export function handleFileSync(filepath: string, handler: HandleFileSyncHandler)
   writeFileSync(filepath, newContent, fsOptions)
 }
 
-export function detectFile(file: string, cwd?: string) {
+export function detectFile(filename: string, cwd?: string) {
   cwd = cwd || process.cwd()
-  const pkg = (dir: string) => join(dir, file)
+  const filepath = (dir: string) => join(dir, filename)
   while (cwd !== '/') {
-    if (existsSync(pkg(cwd))) return cwd
+    if (existsSync(filepath(cwd))) return cwd
     cwd = dirname(cwd)
   }
   return null
