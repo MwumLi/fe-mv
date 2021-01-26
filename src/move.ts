@@ -1,15 +1,14 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
 import * as mv from 'mv'
-import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, HandleFileSyncHandler, isModuleSrcPath, isNpmModule } from './utils'
+import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, isModuleSrcPath, isNpmModule } from './utils'
 import { Project } from './project'
 
 let project: Project
 
-function generateReferencePath(originModuleAbsPath: string, filepath: string) {
-  const moveModuleAbsPath = project.getMovePath(originModuleAbsPath)
-  const relativeSrc = project.relativeSrc(moveModuleAbsPath)
-  const relativeTarget = relative(dirname(filepath), moveModuleAbsPath)
+function generateReferencePathFor(filepath: string, referenceAbsPath: string) {
+  const relativeSrc = project.relativeSrc(referenceAbsPath)
+  const relativeTarget = relative(dirname(filepath), referenceAbsPath)
   const len = (v: string) => v.split('/').length
   if (len(relativeSrc) < len(relativeTarget)) {
     return moduleSrcPath(relativeSrc)
@@ -17,36 +16,66 @@ function generateReferencePath(originModuleAbsPath: string, filepath: string) {
   return moduleRelativePath(relativeTarget)
 }
 
-function updateNorMoverReference(filepath: string) {
-  const handler: HandleFileSyncHandler = ({ content }): string => {
-    const importReg = /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    let matchResult
-    const updated = []
-    while ((matchResult = importReg.exec(content))) {
-      const { statement, modulePath } = matchResult.groups as {
-        [key: string]: string;
+function generateMoverReferencePath(originModuleAbsPath: string, filepath: string) {
+  const moveModuleAbsPath = project.getMovePath(originModuleAbsPath)
+  return generateReferencePathFor(filepath, moveModuleAbsPath)
+}
+
+interface ReviseReferencePathHandler {
+  (modulePath: string, filepath: string): string | null;
+}
+
+interface ReferenceStatementRecord {
+  statement: string;
+  newStatement: string;
+}
+
+function getReferenceStatementRecords(content: any, regReference: RegExp, handler: ReviseReferencePathHandler, filepath: any): ReferenceStatementRecord[] {
+  const updated = []
+  let matchResult
+  while ((matchResult = regReference.exec(content))) {
+    const { statement, modulePath } = matchResult.groups as {
+      [key: string]: string;
+    }
+    const newModulePath = handler(modulePath, filepath)
+    if (newModulePath && modulePath !== newModulePath) {
+      const update = {
+        statement,
+        newStatement: statement.replace(modulePath, newModulePath),
       }
+      updated.push(update)
+    }
+  }
+  return updated
+}
+
+function updateReference(content: any, regReferences: any[], handler: ReviseReferencePathHandler, filepath: any) {
+  const updates = regReferences
+  .map((regReference: RegExp) => getReferenceStatementRecords(content, regReference, handler, filepath))
+  .reduce((acc: any[], updated: any) => {
+    return acc.concat(updated)
+  }, [])
+  if (!updates || updates.length === 0) return content
+  const newContent = updates.reduce((content: string, { statement, newStatement }: any) => {
+    return content.replace(statement, newStatement)
+  }, content)
+  return newContent
+}
+
+function updateNorMoverReference(filepath: string) {
+  handleFileSync(filepath, ({ content }) => {
+    const regReferences = [
+      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
+    ]
+    return updateReference(content, regReferences, (modulePath, filepath) => {
       const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
       // 忽略非移动者的引用
-      if (!project.isMover(originModuleAbsPath)) continue
-
-      const newModulePath = generateReferencePath(originModuleAbsPath, filepath)
-      if (modulePath !== newModulePath) {
-        const update = {
-          statement,
-          newStatement: statement.replace(modulePath, newModulePath),
-        }
-        updated.push(update)
-      }
-    }
-
-    if (!updated || updated.length === 0) return content
-    const newContent = updated.reduce((content, { statement, newStatement }) => {
-      return content.replace(statement, newStatement)
-    }, content)
-    return newContent
-  }
-  handleFileSync(filepath, handler)
+      if (!project.isMover(originModuleAbsPath)) return null
+      const newModulePath = generateMoverReferencePath(originModuleAbsPath, filepath)
+      if (modulePath === newModulePath) return null
+      return newModulePath
+    }, filepath)
+  })
 }
 
 const filterFunc = (filter: string | RegExp, name: string) => {
@@ -85,36 +114,24 @@ function traversal(dir: string, callback: (arg0: any) => void) {
 }
 
 function updateMoverReference(filepath: string) {
-  const handler: HandleFileSyncHandler = ({ content }): string => {
-    const importReg = /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    let matchResult
-    const updated = []
-    while ((matchResult = importReg.exec(content))) {
-      const { statement, modulePath } = matchResult.groups as {
-        [key: string]: string;
-      }
-      if (isNpmModule(modulePath)) continue
+  handleFileSync(filepath, ({ content }) => {
+    const regReferences = [
+      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
+    ]
+    return updateReference(content, regReferences, (modulePath, filepath) => {
+      if (isNpmModule(modulePath)) return null
+      // TODO: 优化: 可以选择更短的引入方式
+      if (isModuleSrcPath(modulePath)) return null
       const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
+      // console.log(originModuleAbsPath)
       const curMoverMovePath = project.getMovePath(filepath)
-      if (project.isMover(originModuleAbsPath) || isModuleSrcPath(modulePath)) {
-        const newModulePath = generateReferencePath(originModuleAbsPath, curMoverMovePath)
-        if (modulePath !== newModulePath) {
-          const update = {
-            statement,
-            newStatement: statement.replace(modulePath, newModulePath),
-          }
-          updated.push(update)
-        }
+      if (project.isMover(originModuleAbsPath)) {
+        return generateMoverReferencePath(originModuleAbsPath, curMoverMovePath)
       }
-    }
 
-    if (!updated || updated.length === 0) return content
-    const newContent = updated.reduce((content, { statement, newStatement }) => {
-      return content.replace(statement, newStatement)
-    }, content)
-    return newContent
-  }
-  handleFileSync(filepath, handler)
+      return generateReferencePathFor(filepath, originModuleAbsPath)
+    }, filepath)
+  })
 }
 
 export interface MoveOptions {
