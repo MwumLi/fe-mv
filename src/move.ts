@@ -1,7 +1,6 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
-import * as mv from 'mv'
-import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, isModuleSrcPath, isNpmModule } from './utils'
+import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, isModuleSrcPath, isNpmModule, mv } from './utils'
 import { Project } from './project'
 
 let project: Project
@@ -155,9 +154,8 @@ export function move(source: string, target: string, options: MoveOptions): void
   })
 
   // 移动(重命名)文件(目录)
-  mv(source, target, (err: any) => {
-    if (err) {
-      throw err
-    }
-  })
+  const errStr = mv(source, target)
+  if (errStr) {
+    throw new Error(errStr)
+  }
 }
