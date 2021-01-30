@@ -71,7 +71,7 @@ export class Project {
     // TODO: 假如 mover 不是目录, 则 target 保持 filepath 同样的后缀
     if (!this.moverIsDir) return this.target
     const relativeTarget = relative(this.source, filepath)
-    if(isDirectory(this.source)){
+    if (isDirectory(this.source)) {
       const moveDir = basename(this.source)
       return join(this.target, moveDir,  relativeTarget)
     }
