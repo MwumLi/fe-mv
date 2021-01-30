@@ -19,3 +19,9 @@ export function moduleRelativePath(filepath: string) {
 export function isNpmModule(modulePath: string) {
   return !(isModuleRelativePath(modulePath) || isModuleSrcPath(modulePath))
 }
+
+export function toUnixPath(path: string) {
+  return path
+  .replace(/^(.+):\\/, '/$1/') // windows 下 C:// => /C/
+  .replace(/\\/g, '/')  // windows 下 a\b\c => a/b/c
+}
