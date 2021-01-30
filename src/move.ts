@@ -1,6 +1,8 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
-import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, isModuleSrcPath, isNpmModule, mv } from './utils'
+import { isDirectory, handleFileSync } from './utils/fs'
+import { moduleRelativePath, moduleSrcPath, isNpmModule, isModuleSrcPath } from './utils/path'
+import { mv } from './utils/unix-move'
 import { Project } from './project'
 
 let project: Project
