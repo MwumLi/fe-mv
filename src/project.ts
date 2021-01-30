@@ -1,6 +1,5 @@
 import { join, resolve, dirname, relative, basename } from 'path'
 import { isDirectory } from './utils/fs'
-type KEYS = 'sourceRoot' | 'targetRoot'
 export class Project {
   root: string;
 
@@ -9,8 +8,6 @@ export class Project {
   source: string;
 
   target: string;
-
-  targetRoot: string;
 
   sourceRoot: string;
 
@@ -22,16 +19,10 @@ export class Project {
     this.source = source
     this.sourceRoot = this.source
     this.target = target
-    this.targetRoot = this.source
-    const moverIsDir = isDirectory(source)
-    if (!moverIsDir) {
-      (['sourceRoot', 'targetRoot'] as KEYS[]).forEach(key => {
-        this[key] = dirname(this[key])
-      })
+    this.moverIsDir = isDirectory(source)
+    if (!this.moverIsDir) {
       this.sourceRoot = dirname(this.source)
     }
-
-    this.moverIsDir = moverIsDir
   }
 
   /**
