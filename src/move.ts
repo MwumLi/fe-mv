@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
 import { isDirectory, handleFileSync } from './utils/fs'
-import { moduleRelativePath, moduleSrcPath, isNpmModule, isModuleSrcPath } from './utils/path'
+import { moduleRelativePath, moduleSrcPath, isNpmModule, isModuleSrcPath, toUnixPath } from './utils/path'
 import { mv } from './utils/unix-move'
 import { Project } from './project'
 
@@ -38,8 +38,10 @@ function getReferenceStatementRecords(content: any, regReference: RegExp, handle
     const { statement, modulePath } = matchResult.groups as {
       [key: string]: string;
     }
-    const newModulePath = handler(modulePath, filepath)
-    if (newModulePath && modulePath !== newModulePath) {
+    let newModulePath = handler(modulePath, filepath)
+    if (newModulePath === null) continue
+    newModulePath = toUnixPath(newModulePath)
+    if (modulePath !== newModulePath) {
       const update = {
         statement,
         newStatement: statement.replace(modulePath, newModulePath),
