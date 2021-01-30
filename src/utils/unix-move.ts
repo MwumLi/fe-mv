@@ -25,7 +25,7 @@ const STATE_NOT_EXIST = 0
 const STATE_IS_NOT_DIR = 1
 const STATE_IS_DIR = 2
 
-function getState(filepath: string) {
+export function getState(filepath: string) {
   const exist = existsSync(filepath)
   if (!exist) return STATE_NOT_EXIST
   const isDir = isDirectory(filepath)
