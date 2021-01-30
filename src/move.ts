@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
 import { isDirectory, handleFileSync } from './utils/fs'
 import { moduleRelativePath, moduleSrcPath, isNpmModule, isModuleSrcPath, toUnixPath } from './utils/path'
-import { mv } from './utils/unix-move'
+import { moveStat } from './utils/unix-move'
 import { Project } from './project'
 
 let project: Project
@@ -145,6 +145,8 @@ export interface MoveOptions {
 
 export function move(source: string, target: string, options: MoveOptions): void {
   const { root } = options
+  const { error, action } = moveStat(source, target)
+  if (error) throw new Error(error)
   project = new Project(root, source, target)
   // 更新引用
   traversal(root, filepath => {
@@ -156,10 +158,6 @@ export function move(source: string, target: string, options: MoveOptions): void
       updateNorMoverReference(filepath)
     }
   })
-
   // 移动(重命名)文件(目录)
-  const errStr = mv(source, target)
-  if (errStr) {
-    throw new Error(errStr)
-  }
+  action && action()
 }
