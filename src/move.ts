@@ -126,13 +126,12 @@ function updateMoverReference(filepath: string) {
       // TODO: 优化: 可以选择更短的引入方式
       if (isModuleSrcPath(modulePath)) return null
       const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
-      // console.log(originModuleAbsPath)
       const curMoverMovePath = project.getMovePath(filepath)
       if (project.isMover(originModuleAbsPath)) {
         return generateMoverReferencePath(originModuleAbsPath, curMoverMovePath)
       }
 
-      return generateReferencePathFor(filepath, originModuleAbsPath)
+      return generateReferencePathFor(curMoverMovePath, originModuleAbsPath)
     }, filepath)
   })
 }
