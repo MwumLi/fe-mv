@@ -99,15 +99,23 @@ function traversal(dir: string, callback: (arg0: any) => void) {
     }
   })
 }
+
+function generateRegReferences() {
+  return [
+    /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g, // import * from './example'
+    // eslint-disable-next-line no-useless-escape
+    /(?<statement>import\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // import('./example')
+    // eslint-disable-next-line no-useless-escape
+    /(?<statement>require\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // require('./example')
+  ]
+}
 /**
  * 更新被移动的文件(目录)的模块引用
  * @param filepath 待更新的文件路径
  */
 function updateMoverReference(filepath: string) {
   handleFileSync(filepath, ({ content }) => {
-    const regReferences = [
-      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    ]
+    const regReferences = generateRegReferences()
     return updateReference(content, regReferences, (modulePath, filepath) => {
       if (isNpmModule(modulePath)) return null
       // TODO: 优化: 可以选择更短的引入方式
@@ -129,9 +137,7 @@ function updateMoverReference(filepath: string) {
  */
 function updateNorMoverReference(filepath: string) {
   handleFileSync(filepath, ({ content }) => {
-    const regReferences = [
-      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    ]
+    const regReferences = generateRegReferences()
     return updateReference(content, regReferences, (modulePath, filepath) => {
       const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
       // 忽略非移动者的引用
