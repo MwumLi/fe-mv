@@ -65,22 +65,6 @@ function updateReference(content: any, regReferences: any[], handler: ReviseRefe
   return newContent
 }
 
-function updateNorMoverReference(filepath: string) {
-  handleFileSync(filepath, ({ content }) => {
-    const regReferences = [
-      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    ]
-    return updateReference(content, regReferences, (modulePath, filepath) => {
-      const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
-      // 忽略非移动者的引用
-      if (!project.isMover(originModuleAbsPath)) return null
-      const newModulePath = generateMoverReferencePath(originModuleAbsPath, filepath)
-      if (modulePath === newModulePath) return null
-      return newModulePath
-    }, filepath)
-  })
-}
-
 const filterFunc = (filter: string | RegExp, name: string) => {
   if (filter instanceof RegExp) return filter.test(name)
   return filter === name
@@ -115,7 +99,10 @@ function traversal(dir: string, callback: (arg0: any) => void) {
     }
   })
 }
-
+/**
+ * 更新被移动的文件(目录)的模块引用
+ * @param filepath 待更新的文件路径
+ */
 function updateMoverReference(filepath: string) {
   handleFileSync(filepath, ({ content }) => {
     const regReferences = [
@@ -136,6 +123,25 @@ function updateMoverReference(filepath: string) {
   })
 }
 
+/**
+ * 更新未移动的文件(目录)的模块引用
+ * @param filepath 待更新的文件路径
+ */
+function updateNorMoverReference(filepath: string) {
+  handleFileSync(filepath, ({ content }) => {
+    const regReferences = [
+      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
+    ]
+    return updateReference(content, regReferences, (modulePath, filepath) => {
+      const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
+      // 忽略非移动者的引用
+      if (!project.isMover(originModuleAbsPath)) return null
+      const newModulePath = generateMoverReferencePath(originModuleAbsPath, filepath)
+      if (modulePath === newModulePath) return null
+      return newModulePath
+    }, filepath)
+  })
+}
 export interface MoveOptions {
   root: string;
   sourceRoot?: string;
