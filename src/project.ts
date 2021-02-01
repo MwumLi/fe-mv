@@ -1,6 +1,6 @@
 import { join, resolve, dirname, relative, basename } from 'path'
 import { isDirectory } from './utils/fs'
-type KEYS = 'sourceRoot' | 'targetRoot'
+import { getState } from "./utils/unix-move";
 export class Project {
   root: string;
 
@@ -9,8 +9,6 @@ export class Project {
   source: string;
 
   target: string;
-
-  targetRoot: string;
 
   sourceRoot: string;
 
@@ -22,16 +20,10 @@ export class Project {
     this.source = source
     this.sourceRoot = this.source
     this.target = target
-    this.targetRoot = this.source
-    const moverIsDir = isDirectory(source)
-    if (!moverIsDir) {
-      (['sourceRoot', 'targetRoot'] as KEYS[]).forEach(key => {
-        this[key] = dirname(this[key])
-      })
+    this.moverIsDir = isDirectory(source)
+    if (!this.moverIsDir) {
       this.sourceRoot = dirname(this.source)
     }
-
-    this.moverIsDir = moverIsDir
   }
 
   /**
@@ -48,10 +40,6 @@ export class Project {
     return resolve(dirname(basePath), modulePath)
   }
 
-  startsWithSource(filepath: string) {
-    return filepath.startsWith(this.sourceRoot)
-  }
-
   isMover(filepath: string) {
     if (this.moverIsDir) {
       return filepath.startsWith(this.sourceRoot)
@@ -63,18 +51,27 @@ export class Project {
     return relative(this.src, filepath)
   }
 
-  relativeTarget(filepath: string) {
-    return relative(this.target, filepath)
-  }
+  // 注意: 建立在提前预检的基础上
 
+  /**
+   * 获取 mover path
+   * @param filepath
+   */
   getMovePath(filepath: string) {
-    // TODO: 假如 mover 不是目录, 则 target 保持 filepath 同样的后缀
-    if (!this.moverIsDir) return this.target
-    const relativeTarget = relative(this.source, filepath)
-    if(isDirectory(this.source)){
-      const moveDir = basename(this.source)
-      return join(this.target, moveDir,  relativeTarget)
+    const { source, target } = this
+    const targetState = getState(target)
+    const sourceTarget = join(target, basename(source))
+    if (this.moverIsDir) {
+      const relativeTarget = relative(source, filepath)
+      // source is dir, target is not exist
+      if (targetState === 0) return join(target, relativeTarget)
+      // source is dir, target is dir, sourceTarget not exist
+      return join(sourceTarget, relativeTarget)
     }
-    return join(this.target, relativeTarget)
+
+    // source is file, target is not exist/file
+    if (targetState === 0 || targetState === 1) return this.target
+    // source is file, target is dir, sourceTarget not exist/file
+    return sourceTarget
   }
 }
