@@ -12,13 +12,13 @@ interface StateActionInfo {
   state?: string;
   states?: string[];
   error?: string;
-  action?: MoveActionHandler
+  action?: MoveActionHandler;
 }
 
 interface MoveStats {
   state: string;
   error?: string;
-  action?: MoveActionHandler
+  action?: MoveActionHandler;
 }
 
 const STATE_NOT_EXIST = 0
@@ -77,7 +77,7 @@ export function moveStat(source: string, target: string): MoveStats {
 
   const matchState = (state: string, eState: string) => [...eState].every((c, i) => c === 'x' || c === state[i])
   const matchErrorOrAction = (state: string, item: StateActionInfo) => {
-    let states = item.states || [item.state as string]
+    const states = item.states || [item.state as string]
     return states.some(eState => matchState(state, eState))
   }
 

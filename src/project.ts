@@ -1,6 +1,6 @@
 import { join, resolve, dirname, relative, basename } from 'path'
 import { isDirectory } from './utils/fs'
-import { getState } from "./utils/unix-move";
+import { getState } from './utils/unix-move'
 export class Project {
   root: string;
 
