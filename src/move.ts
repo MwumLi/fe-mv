@@ -1,6 +1,8 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
-import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, isModuleSrcPath, isNpmModule, mv } from './utils'
+import { isDirectory, handleFileSync } from './utils/fs'
+import { moduleRelativePath, moduleSrcPath, isNpmModule, isModuleSrcPath, toUnixPath } from './utils/path'
+import { moveStat } from './utils/unix-move'
 import { Project } from './project'
 
 let project: Project
@@ -36,8 +38,10 @@ function getReferenceStatementRecords(content: any, regReference: RegExp, handle
     const { statement, modulePath } = matchResult.groups as {
       [key: string]: string;
     }
-    const newModulePath = handler(modulePath, filepath)
-    if (newModulePath && modulePath !== newModulePath) {
+    let newModulePath = handler(modulePath, filepath)
+    if (newModulePath === null) continue
+    newModulePath = toUnixPath(newModulePath)
+    if (modulePath !== newModulePath) {
       const update = {
         statement,
         newStatement: statement.replace(modulePath, newModulePath),
@@ -141,6 +145,8 @@ export interface MoveOptions {
 
 export function move(source: string, target: string, options: MoveOptions): void {
   const { root } = options
+  const { error, action } = moveStat(source, target)
+  if (error) throw new Error(error)
   project = new Project(root, source, target)
   // 更新引用
   traversal(root, filepath => {
@@ -152,10 +158,6 @@ export function move(source: string, target: string, options: MoveOptions): void
       updateNorMoverReference(filepath)
     }
   })
-
   // 移动(重命名)文件(目录)
-  const errStr = mv(source, target)
-  if (errStr) {
-    throw new Error(errStr)
-  }
+  action && action()
 }
