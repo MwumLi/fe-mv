@@ -1,6 +1,8 @@
 import * as fs from 'fs'
 import { basename, join, relative, dirname } from 'path'
-import { isDirectory, moduleRelativePath, moduleSrcPath, handleFileSync, isModuleSrcPath, isNpmModule, mv } from './utils'
+import { isDirectory, handleFileSync } from './utils/fs'
+import { moduleRelativePath, moduleSrcPath, isNpmModule, isModuleSrcPath, toUnixPath } from './utils/path'
+import { moveStat } from './utils/unix-move'
 import { Project } from './project'
 
 let project: Project
@@ -36,8 +38,10 @@ function getReferenceStatementRecords(content: any, regReference: RegExp, handle
     const { statement, modulePath } = matchResult.groups as {
       [key: string]: string;
     }
-    const newModulePath = handler(modulePath, filepath)
-    if (newModulePath && modulePath !== newModulePath) {
+    let newModulePath = handler(modulePath, filepath)
+    if (newModulePath === null) continue
+    newModulePath = toUnixPath(newModulePath)
+    if (modulePath !== newModulePath) {
       const update = {
         statement,
         newStatement: statement.replace(modulePath, newModulePath),
@@ -59,22 +63,6 @@ function updateReference(content: any, regReferences: any[], handler: ReviseRefe
     return content.replace(statement, newStatement)
   }, content)
   return newContent
-}
-
-function updateNorMoverReference(filepath: string) {
-  handleFileSync(filepath, ({ content }) => {
-    const regReferences = [
-      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    ]
-    return updateReference(content, regReferences, (modulePath, filepath) => {
-      const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
-      // 忽略非移动者的引用
-      if (!project.isMover(originModuleAbsPath)) return null
-      const newModulePath = generateMoverReferencePath(originModuleAbsPath, filepath)
-      if (modulePath === newModulePath) return null
-      return newModulePath
-    }, filepath)
-  })
 }
 
 const filterFunc = (filter: string | RegExp, name: string) => {
@@ -112,27 +100,54 @@ function traversal(dir: string, callback: (arg0: any) => void) {
   })
 }
 
+function generateRegReferences() {
+  return [
+    /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g, // import * from './example'
+    // eslint-disable-next-line no-useless-escape
+    /(?<statement>import\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // import('./example')
+    // eslint-disable-next-line no-useless-escape
+    /(?<statement>require\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // require('./example')
+  ]
+}
+/**
+ * 更新被移动的文件(目录)的模块引用
+ * @param filepath 待更新的文件路径
+ */
 function updateMoverReference(filepath: string) {
   handleFileSync(filepath, ({ content }) => {
-    const regReferences = [
-      /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g
-    ]
+    const regReferences = generateRegReferences()
     return updateReference(content, regReferences, (modulePath, filepath) => {
       if (isNpmModule(modulePath)) return null
       // TODO: 优化: 可以选择更短的引入方式
       if (isModuleSrcPath(modulePath)) return null
       const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
-      // console.log(originModuleAbsPath)
       const curMoverMovePath = project.getMovePath(filepath)
       if (project.isMover(originModuleAbsPath)) {
         return generateMoverReferencePath(originModuleAbsPath, curMoverMovePath)
       }
 
-      return generateReferencePathFor(filepath, originModuleAbsPath)
+      return generateReferencePathFor(curMoverMovePath, originModuleAbsPath)
     }, filepath)
   })
 }
 
+/**
+ * 更新未移动的文件(目录)的模块引用
+ * @param filepath 待更新的文件路径
+ */
+function updateNorMoverReference(filepath: string) {
+  handleFileSync(filepath, ({ content }) => {
+    const regReferences = generateRegReferences()
+    return updateReference(content, regReferences, (modulePath, filepath) => {
+      const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
+      // 忽略非移动者的引用
+      if (!project.isMover(originModuleAbsPath)) return null
+      const newModulePath = generateMoverReferencePath(originModuleAbsPath, filepath)
+      if (modulePath === newModulePath) return null
+      return newModulePath
+    }, filepath)
+  })
+}
 export interface MoveOptions {
   root: string;
   sourceRoot?: string;
@@ -141,6 +156,8 @@ export interface MoveOptions {
 
 export function move(source: string, target: string, options: MoveOptions): void {
   const { root } = options
+  const { error, action } = moveStat(source, target)
+  if (error) throw new Error(error)
   project = new Project(root, source, target)
   // 更新引用
   traversal(root, filepath => {
@@ -152,10 +169,6 @@ export function move(source: string, target: string, options: MoveOptions): void
       updateNorMoverReference(filepath)
     }
   })
-
   // 移动(重命名)文件(目录)
-  const errStr = mv(source, target)
-  if (errStr) {
-    throw new Error(errStr)
-  }
+  action && action()
 }
