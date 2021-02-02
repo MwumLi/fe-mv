@@ -4,7 +4,7 @@ import { detectFile } from './utils/fs'
 import { move } from './move'
 
 class Move extends Command {
-  static description = 'describe the command here'
+  static description = '移动(重命名)目录或文件, 同时更新前端项目模块引用'
 
   static flags = {
     // add --version flag to show CLI version
