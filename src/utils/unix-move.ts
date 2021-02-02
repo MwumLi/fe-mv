@@ -4,52 +4,91 @@ import { isDirectory } from './fs'
 import { existsSync } from 'fs'
 import { basename, join } from 'path'
 
-interface ActionHandler {
-  (): void | string;
+export interface MoveActionHandler {
+  (): void;
 }
 
-interface StateToActions {
-  [propName: string]: ActionHandler;
+interface StateActionInfo {
+  state?: string;
+  states?: string[];
+  error?: string;
+  action?: MoveActionHandler;
 }
 
-export function mv(source: string, target: string): string | void {
-  const state1 = isDirectory(source) ? 1 : 0
-  const state2 = isDirectory(target) ? 1 : 0
-  const sourceTarget = join(target, basename(source))
-  // 0 -> not exist 1 -> 不是目录 2 -> 文件
-  const state3 = existsSync(sourceTarget) ? (isDirectory(sourceTarget) ? 2 : 1) : 0
+interface MoveStats {
+  state: string;
+  error?: string;
+  action?: MoveActionHandler;
+}
 
+const STATE_NOT_EXIST = 0
+const STATE_IS_NOT_DIR = 1
+const STATE_IS_DIR = 2
+
+export function getState(filepath: string) {
+  const exist = existsSync(filepath)
+  if (!exist) return STATE_NOT_EXIST
+  const isDir = isDirectory(filepath)
+  return isDir ? STATE_IS_DIR : STATE_IS_NOT_DIR
+}
+
+export function moveStat(source: string, target: string): MoveStats {
   const renameWrapper = (target: string) => {
     return () => rename(source, target, { mkdirp: true }, (err: any) => {
       if (err) throw err
     })
   }
 
-  const error = (sourceTarget: string, msg: string) => {
-    return () => {
-      return `rename ${source} to ${sourceTarget}: ${msg}`
+  const sourceTarget = join(target, basename(source))
+  const state = [source, target, sourceTarget].map(getState).join('')
+  const stateToErrors = [
+    {
+      state: '0', // if source not exist
+      error: `cannot stat '${source}': No such file or directory`
+    },
+    {
+      state: '122', // if source is file, target is dir and sourceTarget is dir
+      error: `cannot overwrite directory '${sourceTarget}' with non-directory`
+    },
+    {
+      state: '21', // if source is dir, target is file
+      error: `cannot overwrite non-directory '${target}' with directory '${source}'`
+    },
+    {
+      state: '221', // if source is dir, target is dir and sourceTarget is file
+      error: `cannot overwrite non-directory '${sourceTarget}' with directory '${source}'`
+    },
+    { // TODO: if sourceTarget is empty, will overwrite sourceTarget
+      state: '222', // if source is dir, target is dir and sourceTarget is dir
+      error: `cannot move '${source}' to '${sourceTarget}': Directory exists`
     }
-  }
-  const state = `${state1}${state2}${state3}`
-  const stateToActions: StateToActions = {
-    // file -> file
-    '000': renameWrapper(target),
-    // file -> dir, dir/file is dir
-    '012': error(sourceTarget, 'Is a directory'),
-    // file -> dir, dir/file not exist
-    '010': renameWrapper(sourceTarget),
-    // file -> dir, dir/file not dir
-    '011': renameWrapper(sourceTarget),
-    // dir -> file
-    '100': error(target, 'Not a directory'),
-    // dir -> dir, dir/dir not exist
-    '110': renameWrapper(sourceTarget),
-    // dir -> dir, dir/dir exist, is not dir
-    '111': error(sourceTarget, 'Not a directory'),
-    // dir -> dir, dir/dir is dir
-    '112': error(sourceTarget, 'Directory not empty')
+  ]
+
+  const stateToActions = [
+    {
+      states: ['10', '11', '20'], // file -> not exist/file, dir -> not exist
+      action: renameWrapper(target)
+    },
+    {
+      states: ['120', '121', '220'], // file -> dir/file not exist/file, dir -> dir/dir not exist
+      action: renameWrapper(sourceTarget)
+    }
+  ]
+
+  const matchState = (state: string, eState: string) => [...eState].every((c, i) => c === 'x' || c === state[i])
+  const matchErrorOrAction = (state: string, item: StateActionInfo) => {
+    const states = item.states || [item.state as string]
+    return states.some(eState => matchState(state, eState))
   }
 
-  const action: ActionHandler = stateToActions[state]
-  return action()
+  const stateActions: StateActionInfo[] = [
+    ...stateToErrors,
+    ...stateToActions
+  ]
+  const { error, action } = stateActions.find(item => matchErrorOrAction(state, item)) || {}
+  return {
+    state,
+    error,
+    action
+  }
 }
