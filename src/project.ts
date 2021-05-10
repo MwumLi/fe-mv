@@ -1,5 +1,6 @@
 import { join, resolve, dirname, relative, basename } from 'path'
 import { isDirectory } from './utils/fs'
+import { existsSync, readdirSync } from 'fs'
 import { getState } from './utils/unix-move'
 export class Project {
   root: string;
@@ -36,15 +37,46 @@ export class Project {
       modulePath = modulePath.slice(2)
       return join(this.root, 'src', modulePath)
     }
-
     return resolve(dirname(basePath), modulePath)
   }
+
+  // TODO: ts暂未考虑,使用了兜底处理
 
   isMover(filepath: string) {
     if (this.moverIsDir) {
       return filepath.startsWith(this.sourceRoot)
     }
-    return this.source.startsWith(filepath)
+    // 类型1：dirA/file(完整后缀)
+    if (existsSync(filepath) && !isDirectory(filepath)) {
+      return this.source === filepath
+    }
+    let dirPath = ''
+    let baseName = 'index'
+    // 类型2：dirA/dirB
+    if (existsSync(filepath) && isDirectory(filepath)) {
+      dirPath = filepath
+    }
+    // 类型3：dirA/fileB(没有后缀)
+    if (!existsSync(filepath)) {
+      dirPath = join(filepath, '..')
+      baseName = basename(filepath)
+    }
+    if (!existsSync(dirPath)) {
+      return false
+    }
+    const fileList = readdirSync(dirPath) || []
+    if (fileList.some(file => file === `${baseName}.js`)) {
+      return this.source === join(dirPath, `${baseName}.js`)
+    }
+    if (fileList.some(file => file === `${baseName}.vue`)) {
+      return this.source === join(dirPath, `${baseName}.vue`)
+    }
+    // default
+    const forecastFile = fileList.find(file => file.startsWith(`${baseName}.`))
+    if (forecastFile) {
+      return this.source === join(dirPath, forecastFile)
+    }
+    return false
   }
 
   relativeSrc(filepath: string) {

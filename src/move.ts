@@ -87,6 +87,7 @@ function canVisit(filename: string, visitList: (string | RegExp)[]): boolean {
 }
 
 const IGNORE_LIST = ['node_modules', /^\..+/, 'README.md']
+// TODO: 待添加类型sass less等
 const ALLOW_LIST = [/.(js|vue|ts)$/]
 function traversal(dir: string, callback: (arg0: any) => void) {
   fs.readdirSync(dir).forEach((file: string) => {
@@ -105,6 +106,8 @@ function generateRegReferences() {
     /(?<statement>(import|export)\s+.*from\s+['"](?<modulePath>.+)['"])/g, // import * from './example'
     // eslint-disable-next-line no-useless-escape
     /(?<statement>import\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // import('./example')
+    // eslint-disable-next-line no-useless-escape
+    /(?<statement>(@import)\s+.*['"](?<modulePath>.+)['"])/g, // @import './example'
     // eslint-disable-next-line no-useless-escape
     /(?<statement>require\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // require('./example')
   ]
@@ -148,16 +151,29 @@ function updateNorMoverReference(filepath: string) {
     }, filepath)
   })
 }
+/**
+ * 检查文件夹是否支持重命名
+ * @param source 源目录
+ * @param target 目的目录
+ */
+function checkOperable(source: string, target: string): boolean {
+  const isFile = !isDirectory(source)
+  const isDifferent = basename(source).toLowerCase() !== basename(target).toLowerCase()
+  if (isFile || isDifferent) {
+    return true
+  }
+  return false
+}
 export interface MoveOptions {
   root: string;
   sourceRoot?: string;
   sourceRootAlias?: string;
 }
 
-export function move(source: string, target: string, options: MoveOptions): void {
-  const { root } = options
-  const { error, action } = moveStat(source, target)
-  if (error) throw new Error(error)
+export function changeReference(source: string, target: string, root: string): void {
+  if (!checkOperable(source, target)) {
+    return
+  }
   project = new Project(root, source, target)
   // 更新引用
   traversal(root, filepath => {
@@ -169,6 +185,16 @@ export function move(source: string, target: string, options: MoveOptions): void
       updateNorMoverReference(filepath)
     }
   })
+}
+
+export function move(source: string, target: string, options: MoveOptions): void {
+  if (!checkOperable(source, target)) {
+    return
+  }
+  const { root } = options
+  const { error, action } = moveStat(source, target)
+  if (error) throw new Error(error)
+  changeReference(source, target, root)
   // 移动(重命名)文件(目录)
   action && action()
 }
