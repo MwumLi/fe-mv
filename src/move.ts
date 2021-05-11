@@ -38,6 +38,7 @@ function getReferenceStatementRecords(content: any, regReference: RegExp, handle
     const { statement, modulePath } = matchResult.groups as {
       [key: string]: string;
     }
+    if (isNpmModule(modulePath)) continue
     let newModulePath = handler(modulePath, filepath)
     if (newModulePath === null) continue
     newModulePath = toUnixPath(newModulePath)
@@ -87,6 +88,7 @@ function canVisit(filename: string, visitList: (string | RegExp)[]): boolean {
 }
 
 const IGNORE_LIST = ['node_modules', /^\..+/, 'README.md']
+// TODO: 待添加类型sass less等
 const ALLOW_LIST = [/.(js|vue|ts)$/]
 function traversal(dir: string, callback: (arg0: any) => void) {
   fs.readdirSync(dir).forEach((file: string) => {
@@ -106,6 +108,8 @@ function generateRegReferences() {
     // eslint-disable-next-line no-useless-escape
     /(?<statement>import\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // import('./example')
     // eslint-disable-next-line no-useless-escape
+    /(?<statement>(@import)\s+['"](?<modulePath>.+)['"])/g, // @import './example'
+    // eslint-disable-next-line no-useless-escape
     /(?<statement>require\([^'"]*['"](?<modulePath>.+)['"][^\)]*\))/g, // require('./example')
   ]
 }
@@ -117,7 +121,6 @@ function updateMoverReference(filepath: string) {
   handleFileSync(filepath, ({ content }) => {
     const regReferences = generateRegReferences()
     return updateReference(content, regReferences, (modulePath, filepath) => {
-      if (isNpmModule(modulePath)) return null
       // TODO: 优化: 可以选择更短的引入方式
       if (isModuleSrcPath(modulePath)) return null
       const originModuleAbsPath = project.parseAbsPath(modulePath, filepath)
