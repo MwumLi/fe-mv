@@ -1,5 +1,6 @@
 import { join, resolve, dirname, relative, basename } from 'path'
 import { isDirectory } from './utils/fs'
+import { existsSync, readdirSync } from 'fs'
 import { getState } from './utils/unix-move'
 export class Project {
   root: string;
@@ -40,11 +41,39 @@ export class Project {
     return resolve(dirname(basePath), modulePath)
   }
 
+  isForecastFileMover(dirPath: string, baseName: string): boolean {
+    const fileList = readdirSync(dirPath) || []
+    // js后缀
+    if (fileList.some(file => file === `${baseName}.js`)) {
+      return this.source === join(dirPath, `${baseName}.js`)
+    }
+    // vue后缀
+    if (fileList.some(file => file === `${baseName}.vue`)) {
+      return this.source === join(dirPath, `${baseName}.vue`)
+    }
+    // 兜底处理
+    const forecastFile = fileList.find(file => file.startsWith(`${baseName}.`))
+    if (forecastFile) {
+      return this.source === join(dirPath, forecastFile)
+    }
+    return false
+  }
+
   isMover(filepath: string) {
     if (this.moverIsDir) {
       return filepath.startsWith(this.sourceRoot)
     }
-    return this.source.startsWith(filepath)
+    const isExists = existsSync(filepath)
+    if (!isExists) {
+      // 类型2：dirA/fileB(没有后缀)
+      return this.isForecastFileMover(dirname(filepath), basename(filepath))
+    }
+    if (isDirectory(filepath)) {
+      // 类型3：dirA/dirB
+      return this.isForecastFileMover(filepath, 'index')
+    }
+    // 类型1：dirA/file(完整后缀)
+    return this.source === filepath
   }
 
   relativeSrc(filepath: string) {
