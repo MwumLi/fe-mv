@@ -157,10 +157,7 @@ export interface MoveOptions {
   sourceRootAlias?: string;
 }
 
-export function move(source: string, target: string, options: MoveOptions): void {
-  const { root } = options
-  const { error, action } = moveStat(source, target)
-  if (error) throw new Error(error)
+export function changeReferenceSync(source: string, target: string, root: string): void {
   project = new Project(root, source, target)
   // 更新引用
   traversal(root, filepath => {
@@ -172,6 +169,13 @@ export function move(source: string, target: string, options: MoveOptions): void
       updateNorMoverReference(filepath)
     }
   })
+}
+
+export function move(source: string, target: string, options: MoveOptions): void {
+  const { root } = options
+  const { error, action } = moveStat(source, target)
+  if (error) throw new Error(error)
+  changeReferenceSync(source, target, root)
   // 移动(重命名)文件(目录)
   action && action()
 }
