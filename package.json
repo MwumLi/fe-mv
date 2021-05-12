@@ -1,7 +1,7 @@
 {
   "name": "fe-mv",
   "description": "移动(重命名)目录或文件, 同时更新引用",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "MwumLi",
   "bin": {
     "fe-mv": "./bin/run"
