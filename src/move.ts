@@ -157,7 +157,7 @@ export interface MoveOptions {
   sourceRootAlias?: string;
 }
 
-export function move(source: string, target: string, options: MoveOptions): void {
+export function move(source: string, target: string, options: MoveOptions) {
   const { root } = options
   const { error, action } = moveStat(source, target)
   if (error) throw new Error(error)
@@ -173,5 +173,5 @@ export function move(source: string, target: string, options: MoveOptions): void
     }
   })
   // 移动(重命名)文件(目录)
-  action && action()
+  if (action) return action()
 }

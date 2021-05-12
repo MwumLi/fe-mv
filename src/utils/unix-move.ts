@@ -34,11 +34,11 @@ export function getState(filepath: string) {
 
 export function moveStat(source: string, target: string): MoveStats {
   const renameWrapper = (target: string) => {
-    return () => rename(source, target, { mkdirp: true }, (err: any) => {
-      if (err) throw err
-    })
+    return new Promise((resolve, reject) => rename(source, target, { mkdirp: true }, (err: any) => {
+      if (err) reject(err)
+      resolve(target)
+    }))
   }
-
   const sourceTarget = join(target, basename(source))
   const state = [source, target, sourceTarget].map(getState).join('')
   const stateToErrors = [
