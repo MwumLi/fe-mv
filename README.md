@@ -4,9 +4,9 @@ fe-mv
 移动(重命名)目录或文件, 同时更新引用, 仅支持前端项目  
 
 [![oclif](https://img.shields.io/badge/cli-oclif-brightgreen.svg)](https://oclif.io)
-[![Version](https://img.shields.io/npm/v/s-mv.svg)](https://npmjs.org/package/s-mv)
-[![Downloads/week](https://img.shields.io/npm/dw/s-mv.svg)](https://npmjs.org/package/s-mv)
-[![License](https://img.shields.io/npm/l/s-mv.svg)](https://github.com/MwumLi/s-mv/blob/master/package.json)
+[![Version](https://img.shields.io/npm/v/fe-mv.svg)](https://npmjs.org/package/fe-mv)
+[![Downloads/week](https://img.shields.io/npm/dw/fe-mv.svg)](https://npmjs.org/package/fe-mv)
+[![License](https://img.shields.io/npm/l/fe-mv.svg)](https://github.com/MwumLi/fe-mv/blob/master/package.json)
 
 <!-- toc -->
 * [Usage](#usage)
